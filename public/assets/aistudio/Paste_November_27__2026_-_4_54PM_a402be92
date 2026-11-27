@@ -1,0 +1,436 @@
+# MASTER PROMPT: Build the complete KrishiKotha (কৃষিকথা) website
+
+> Copy everything below this line into Claude, Google AI Studio or Z.ai.
+> Also attach the Stitch design files (the `screen.png` images, the `code.html` files and `DESIGN.md`). All key design values are repeated in Section 3, so the build still works if a tool cannot open the ZIP.
+
+---
+
+## 0. YOUR ROLE AND HOW TO WORK
+
+You are a senior software architect, full-stack TypeScript developer, UI/UX designer and DevOps engineer. You will design and build one complete, production-ready website from scratch.
+
+**The person you are working for is a complete beginner.** They cannot write or read code. You make every technical decision yourself. They will only:
+1. Copy the files you generate into a GitHub repository (or upload them as a ZIP).
+2. Click through account setup steps (Supabase, Google, Vercel) exactly as your README tells them.
+3. Copy and paste a few keys into the right boxes.
+
+**Rules of conduct**
+- Never ask the user to write, edit or understand code.
+- Never use placeholders such as `// TODO`, `...rest of the code`, or "implement this yourself". Every file must be complete and runnable.
+- Print every file in full with its exact path as a heading, one file per fenced code block. If your output limit is reached, stop at a clean file boundary, say "CONTINUED IN PART N", and resume with the next file when the user replies "continue". Never silently skip files.
+- Build in the phases listed in Section 14 and finish with the final report in Section 13.
+- Never claim something was tested if you did not actually run it. If you cannot run code in your environment, say so plainly and mark the item "NOT RUN, requires the user's environment" instead of guessing.
+- Do not use any paid AI API (Gemini, Claude, OpenAI, etc.) anywhere in the website's runtime.
+- No real payment integration. Demonstration checkout only.
+
+---
+
+## 1. PROJECT SUMMARY
+
+**Name:** KrishiKotha (কৃষিকথা)
+**Tagline:** "From Farmers' Hands to Your Home." (সরাসরি কৃষকের ক্ষেত থেকে)
+**What it is:** A mobile-first farm-to-home grocery marketplace for Bangladesh. It connects smallholder farmers (Bogura, Rajshahi, Rangpur, Narsingdi, Sylhet, Pabna, Dinajpur, Jessore) directly with households in Dhaka (Gulshan, Dhanmondi, Uttara, Banani, Mirpur). Selling points: same-day morning harvest, zero middlemen, QR traceability, verified natural produce, fair prices in BDT.
+**Languages:** English plus Bangla. English headings, Bangla subtitles and a working EN / বাংলা toggle.
+**Currency:** BDT, shown as `৳`. In Bangla mode, show Bangla digits (e.g. ৳৬৫ → `৳৬৫`); in English mode, show Latin digits (`৳65`). Store money as integer taka (or integer poisha) in the database, never floating point.
+
+### 1.1 IMPORTANT: product-type decision (read carefully)
+The attached Stitch designs are for **fresh farm produce** (vegetables, fruits, rice, spices, oils, weekly baskets). The original brief mentioned "clothing" with sizes and colours. **The designs are the source of truth.** Build KrishiKotha as a produce marketplace.
+
+To keep the system flexible, model product options generically as **variants** (a `label` such as "500g Pack", "1 kg Family Pack", "Per Piece", "500ml Bottle"). Do **not** build clothing-specific size and colour selectors. The product page's "Selected Pack Size" selector in the design is the variant selector. Keep the variant model generic so the shop owner could later change the catalogue type.
+
+---
+
+## 2. TECH STACK (fixed, do not substitute)
+
+| Layer | Choice |
+|---|---|
+| Frontend | React 18 + TypeScript + Vite 5 |
+| Styling | Tailwind CSS 3.4 (with `tailwind.config.ts` containing the design tokens) |
+| Routing | React Router v6 |
+| Server state | TanStack Query v5 |
+| Forms/validation (client) | React Hook Form + Zod |
+| Icons | Material Symbols Outlined (Google Fonts), matching the Stitch design; use a safe text fallback if it fails to load |
+| Fonts | Plus Jakarta Sans, Inter, Noto Sans Bengali (via Google Fonts, `display=swap`) |
+| Backend | Node.js 20 + TypeScript on **Vercel Serverless Functions** in `/api` (no separate server, no Express server process) |
+| Backend validation | Zod |
+| Database | Supabase PostgreSQL |
+| Auth | Supabase Auth (JWT): Google OAuth, email + password, anonymous (guest) sign-in |
+| Hosting | Vercel (frontend + API in one repo), GitHub |
+| Testing | Vitest (unit tests for pricing and validation), plus a scripted API smoke test |
+
+Pin dependency versions to ones that are known to work together. Generate a valid `package.json` with `scripts`: `dev`, `build`, `preview`, `typecheck`, `lint`, `test`, `smoke`. Set `"engines": { "node": ">=20" }`.
+
+---
+
+## 3. DESIGN SYSTEM (follow the Stitch designs as closely as possible)
+
+The designs provided: **mobile homepage, mobile product detail, desktop homepage, desktop product detail**, plus `DESIGN.md`. Recreate them pixel-faithfully, then extend the same visual language to every additional page (cart, wishlist, checkout, login, profile, orders, about, contact, farmers, category/shop).
+
+### 3.1 Colours (use these exact values as Tailwind tokens)
+The prose in DESIGN.md is canonical for brand colours:
+
+| Token | Hex | Use |
+|---|---|---|
+| `primary` (Forest Green) | `#245C3A` | Header, primary buttons ("Add to Cart", "Checkout"), trust sections |
+| `secondary` (Fresh Leaf) | `#8BBF67` | Organic badges, active filter states |
+| `tertiary` (Harvest Gold) | `#E7A94B` | Featured tags, star ratings |
+| `cream` (Warm Cream) | `#F5F2E8` | Section backgrounds, category strips, unselected chips |
+| `white` | `#FFFFFF` | Main canvas, product cards |
+| `alert` (Tomato Red) | `#D96B50` | "Harvested Today" badges, discounts, low-stock |
+| `ink` (Charcoal) | `#1C241E` | Body text |
+
+Also register the full Material-style token set from the `DESIGN.md` front-matter (`surface #fcf9ef`, `surface-container-*`, `on-surface #1c1c16`, `outline #717971`, `outline-variant #c0c9bf`, `error #ba1a1a`, etc.) so any class used in the Stitch `code.html` files resolves. If front-matter and prose disagree on a hex, use the prose value for brand colours above and the front-matter for the neutral surface tokens.
+
+White text on Forest Green only (WCAG AA). Body text `#1C241E` on cream or white.
+
+### 3.2 Typography
+- Headings: **Plus Jakarta Sans**: `headline-lg` 36/44 bold (mobile 28/34), `headline-md` 24/32 semibold, `headline-sm` 20/28 semibold, `title-md` 16/24 semibold.
+- Body and prices: **Inter**: `body-lg` 16/24, `body-md` 14/20, `body-sm` 12/18, `label-lg` 14/20 semibold, `label-md` 12/16 semibold, `label-sm` 11/14 semibold. Use tabular numerals for prices.
+- Bangla subtitles: **Noto Sans Bengali** 14px / 22px line-height, weight 500.
+
+### 3.3 Layout, spacing, shape, elevation
+- Container max-width 1280px. **Mobile (<640px):** 2-column product grid, 16px margins and gutters. **Tablet (640–1024px):** 3 columns, 24px margins. **Desktop (>1024px):** 4 columns, 32px margins, 24px gutters.
+- Radius: 8px for buttons/inputs/steppers; 16px for cards and banners; 24px for modals, bottom sheets and cart drawers; fully rounded pills for chips and badges.
+- Shadows: soft, tinted green: `0 4px 12px rgba(36,92,58,0.06)`. Inputs and unselected chips use a 1px ghost border `rgba(36,92,58,0.14–0.18)`. Focus ring 2px `#245C3A`.
+- Minimum touch target 44px. Inputs are 48px tall.
+- Generous whitespace between sections (32px+).
+
+### 3.4 Components (build as reusable components in `src/components`)
+`Button` (primary, secondary, outline, quick-add circular "+"), `Badge` and `Chip` (pill: "Harvested Today" red, "Organic" green, "Featured" gold, "Verified Organic", "Pesticide Free", "GI Tagged Region"), `ProductCard`, `QuantityStepper`, `CartItemRow` (64px thumbnail, bilingual name, unit price, stepper), `CategoryTile`, `FarmerCard`, `TrustBadgeStrip`, `SectionHeader` (English title + Bangla subtitle + "See All →"), `FilterSidebar` (desktop) / `FilterBottomSheet` (mobile), `SortSelect`, `Pagination`, `Skeleton` loaders, `Toast` notifications, `EmptyState`, `ErrorState` with retry, `Modal`, `AuthPanel`, `LanguageToggle`, `Breadcrumbs`, `RatingStars`, `PriceBlock` (current price, struck-through old price, price per kg), `DemoBanner`.
+
+### 3.5 Layouts to reproduce
+
+**Mobile (from the mobile screens)**
+- Sticky top bar: logo + "KrishiKotha | কৃষিকথা", EN/বাংলা toggle, cart icon with count badge, account icon.
+- Hero card with photo, "100% Traceable | সরাসরি কৃষকের ক্ষেত থেকে" pill, headline "From Farmers' Hands to Your Home.", copy, buttons "Shop Fresh Harvest →" and "Build Your Own Basket".
+- 2×2 trust cards: Direct from Farmers, Harvest Date & QR, Verified Natural, bKash / Nagad / COD.
+- "Today's Fresh Harvest | আজকের তাজা ফসল • Picked this morning" horizontal scroll of product cards (red "Harvested Today" badge, farmer name • district, price, green "Add" button).
+- "Shop by Category | ক্যাটাগরি অনুযায়ী কিনুন": 2-column tile grid of 10 categories with icons.
+- "Build Your Own Basket" card with chips (Potato • আলু, Onion • পেঁয়াজ, Bottle Gourd • লাউ, "+ Add More") and "Customize Your Basket →".
+- "Meet Your Farmer | আমাদের কৃষকদের গল্প" horizontal farmer cards ("Read Story →").
+- "Seasonal Harvest Calendar" (Now / Next Month), "Neighborhood Group Order: Community Buying" card with "Join".
+- **Bottom tab bar:** Home, Shop, Categories, Farmers, Cart (with badge). Active tab in Forest Green.
+- Mobile product detail: image gallery, title (EN + BN), farmer, harvest badge, pack-size selector, quantity stepper, sticky bottom bar "Add to Basket • ৳65", traceability log, reviews, "More From Today's Harvest".
+
+**Desktop (from the desktop screens)**
+- Top announcement strip: "Morning Harvest: Dispatched across Dhaka by 11:00 AM • Free delivery on orders above ৳799 with coupon KRISHI100 • 100% Direct Farmer Payout • BSTI Tested • Same-day Dispatch".
+- Header: logo, "Deliver to: Dhaka (Gulshan / Dhanmondi)" selector, search bar, EN | বাংলা toggle, "Become a Seller", "Sign In" (becomes the account menu when signed in), cart summary "৳0.00 • 2 items" (live total).
+- Nav row: Home, Shop Harvest, Categories, Meet Farmers, Our Traceability, About Us (plus Contact in footer or nav).
+- Hero with stats (1,400+ Verified Farmers, 0% Middlemen Markup, 5:30 AM Same-Day Harvest, 4.9 ★ 12k+ Dhaka Families), a "Harvested Today, 5:30 AM" traceability overlay card, and the two CTAs.
+- Four trust columns, "Today's Fresh Harvest Dispatch" with a live countdown "Morning Dispatch Closes in 02:44:18" (counts down to the next 11:00 AM Asia/Dhaka cut-off) and "See All 48 Fresh Picks →", a 4-product row, "Shop by Harvest Category" (10 categories), the Weekly Basket builder panel (Standard 4-Person Weekly Basket, Auto 15% OFF, line items, estimated weight 5.4 kg, ৳340 → ৳290 / week), "Meet the Farmers Behind Your Food" (3 farmers), Seasonal Harvest Calendar, "Community Bulk Ordering" panel, footer (hotline +880 9612-445566, Dispatch Hubs Tejgaon & Uttara, link columns, bKash/Nagad/Cards/COD badges, BSTI Monitored, Lab Tested).
+- Desktop shop/product page: breadcrumbs (Home › Shop Harvest › Fresh Vegetables › Deshi Tomato), left filter sidebar (Crop Categories with counts, Harvest Window, Farming Practice, Farmer District, Price Range slider ৳20–৳500+), active-filter chips with "Clear All Filters", "Sort by" (Harvest Time freshest first, Price low→high, Price high→low, Farmer Trust Rating, Most Loved by Households), grid/list view toggle, "Showing 1–8 of 142" pagination, featured product block (pack size, quantity, "Add to Basket • ৳65", wishlist heart, same-day delivery note), Farm-to-Fork Traceability Log card (Trace ID #BD-BG-402-TM, grower, cultivation care, morning harvest log timeline), Verified Household Reviews, "More From Today's Harvest", "Fair Share Promise" banner.
+
+Where the Stitch HTML contains copy, class names or structure, reuse them. Where it uses remote image URLs that may expire, do not depend on them (see Section 9.4).
+
+---
+
+## 4. REPOSITORY STRUCTURE (single GitHub repo, deployable on Vercel as-is)
+
+```
+krishikotha/
+├─ api/
+│  └─ [...path].ts            # ONE catch-all serverless function containing a small typed router
+├─ server/                    # shared backend code imported by api/[...path].ts (NOT separate functions)
+│  ├─ router.ts, http.ts (CORS, JSON, error envelope), auth.ts (JWT validation),
+│  ├─ supabase.ts (client factories), env.ts (validated env), pricing.ts (all money logic),
+│  ├─ schemas.ts (Zod), handlers/{products,categories,farmers,cart,wishlist,orders,profile,
+│  │   coupons,inquiries,health}.ts
+├─ shared/                    # types shared by frontend and backend (DTOs, enums, zod schemas)
+├─ src/
+│  ├─ main.tsx, App.tsx, routes.tsx
+│  ├─ components/, pages/, hooks/, lib/ (apiClient.ts, supabaseClient.ts, format.ts, i18n/)
+│  ├─ styles/index.css
+├─ supabase/
+│  ├─ 01_schema.sql           # tables, constraints, indexes, triggers, functions
+│  ├─ 02_rls_policies.sql     # Row Level Security
+│  ├─ 03_seed.sql             # categories, farmers, products, variants, reviews, coupons
+│  └─ 99_reset_optional.sql   # clearly labelled, destructive, optional
+├─ scripts/smoke-test.ts      # API smoke test (run with `npm run smoke`)
+├─ tests/                     # Vitest unit tests (pricing, validation)
+├─ public/                    # favicon, og image, placeholder images (local SVG)
+├─ .env.example
+├─ .gitignore                 # must include .env, .env.local, node_modules, dist, .vercel
+├─ index.html, vite.config.ts, tsconfig*.json, tailwind.config.ts, postcss.config.js
+├─ vercel.json
+├─ package.json
+└─ README.md
+```
+
+**Vercel limit reminder:** the free (Hobby) plan allows a maximum of 12 serverless functions. Therefore use the **single catch-all function** `api/[...path].ts` with an internal router. Do not create one file per endpoint.
+
+`vercel.json` must: (a) rewrite all non-`/api` and non-static paths to `/index.html` so React Router deep links and page refreshes work after deployment, (b) leave `/api/*` untouched, (c) set sensible security headers, (d) set the function `maxDuration` and Node runtime appropriately. Verify the rewrite does not swallow `/api` requests.
+
+---
+
+## 5. DATABASE (Supabase PostgreSQL)
+
+Deliver three SQL files that the user pastes into Supabase **SQL Editor** one after another. They must be **idempotent where possible** (`create table if not exists`, `create or replace function`, `drop policy if exists` before `create policy`, `on conflict do nothing` / upsert in seed) so running them twice does not break anything.
+
+### 5.1 Tables (suggested; improve if needed, but keep all of these concepts)
+
+- `profiles`: `id uuid PK references auth.users on delete cascade`, `full_name`, `phone`, `default_address` fields (`address_line`, `area`, `city` default 'Dhaka', `postal_code`), `preferred_language` ('en'|'bn'), `is_guest boolean`, `created_at`, `updated_at`. Created automatically by a **trigger on `auth.users`** (including anonymous users), copying name/avatar from Google metadata when present.
+- `categories`: `id`, `slug unique`, `name_en`, `name_bn`, `icon` (Material Symbols name), `sort_order`, `image_url`. Seed exactly these 10: Fresh Vegetables (তাজা সবজি), Leafy Greens (শাক-পাতা), Seasonal Fruits (মৌসুমি ফল), Rice & Grains (চাল ও শস্য), Pulses & Lentils (ডাল ও ডালজাতীয়), Natural Spices (খাঁটি মসলা), Mustard Oil & Ghee / Farm Essentials (তেল, মধু ও ঘি), Verified Organic (অর্গানিক পণ্য), Weekly Baskets (সাপ্তাহিক ঝুড়ি), Ready-to-Cook (কাটা ও ধোয়া সবজি).
+- `farmers`: `id`, `slug`, `name_en`, `name_bn`, `district`, `upazila`, `specialty`, `years_farming`, `acres`, `story`, `quote`, `photo_url`, `is_verified`.
+- `products`: `id`, `slug unique`, `category_id`, `farmer_id`, `name_en`, `name_bn`, `description_en`, `description_bn`, `image_url`, `gallery_urls text[]`, `origin_district`, `origin_hub`, `harvest_time timestamptz` or `harvested_today boolean`, `harvest_label` (e.g. "Harvested 5:30 AM"), `farming_practice` (enum: organic, pesticide_free, gap_certified, conventional_verified), `badges text[]` (e.g. 'Naturally Ripened', 'GI Tagged Region'), `trace_id` (e.g. BD-BG-402-TM), `trace_log jsonb` (timeline entries), `rating_avg numeric(2,1)`, `rating_count int`, `is_featured boolean`, `basket_eligible boolean`, `is_active boolean`, `created_at`.
+- `product_variants`: `id`, `product_id`, `sku unique`, `label_en` ("500g Pack"), `label_bn`, `unit_weight_grams int`, `price_bdt int` (integer taka), `compare_at_price_bdt int null`, `stock_qty int`, `is_default boolean`, `sort_order`. **Prices live here and nowhere else.**
+- `product_reviews`: `id`, `product_id`, `author_name`, `area`, `rating 1–5`, `comment`, `created_at` (seeded, read-only for visitors; signed-in non-guest users may not post in this version).
+- `carts`: `id`, `user_id unique references auth.users on delete cascade`, `coupon_code null`, `created_at`, `updated_at`.
+- `cart_items`: `id`, `cart_id`, `variant_id`, `quantity int check (1..50)`, unique `(cart_id, variant_id)`. **Do not store prices in the cart.**
+- `wishlist_items`: `id`, `user_id`, `product_id`, unique `(user_id, product_id)`, `created_at`.
+- `coupons`: `code PK`, `description`, `discount_type` ('flat'|'percent'), `discount_value`, `min_subtotal_bdt`, `is_active`, `expires_at`. Seed `KRISHI100` (flat ৳100 off when subtotal ≥ ৳799; state this assumption in the README).
+- `orders`: `id uuid`, `order_number text unique` (format `KK-YYYYMMDD-####`, generated in the database), `user_id`, `status` enum (placed, confirmed, dispatched, delivered, cancelled), `payment_method` enum (cod, bkash, nagad, card) **as a demo selection only**, `payment_status` default `'demo_not_charged'`, `subtotal_bdt`, `basket_discount_bdt`, `coupon_code`, `coupon_discount_bdt`, `delivery_fee_bdt`, `total_bdt`, `delivery_name`, `delivery_phone`, `delivery_address`, `delivery_area`, `delivery_slot`, `notes`, `created_at`.
+- `order_items`: `id`, `order_id`, `product_id`, `variant_id`, **snapshots** `product_name_en`, `product_name_bn`, `variant_label`, `unit_price_bdt`, `quantity`, `line_total_bdt`, `image_url`.
+- `inquiries`: `id`, `type` ('contact'|'seller'|'community_building'), `name`, `email`, `phone`, `message`, `extra jsonb`, `user_id null`, `created_at` (powers Contact, Become a Seller, and Community Buying forms).
+
+### 5.2 Required database functions
+- `handle_new_user()` trigger → creates profile and empty cart for every new auth user (email, Google or anonymous), sets `is_guest` from `is_anonymous`.
+- `set_updated_at()` trigger.
+- `place_order(...)`: a **single transactional Postgres function (`security definer`, uses `auth.uid()`)** that: locks the user's cart; loads current prices from `product_variants`; checks stock and `is_active`; calculates subtotal, basket discount, coupon discount, delivery fee, total; inserts `orders` + `order_items` (with snapshots); decrements stock; clears the cart; returns the new order. It raises clear, specific errors (empty cart, out of stock for X, invalid coupon, etc.). **The client never sends prices or totals.**
+- Optional `merge_guest_cart` logic if you choose to support signing in to an existing account from a guest session (see Section 6.5).
+
+### 5.3 Row Level Security (mandatory, enabled on every table)
+- `categories`, `farmers`, `products`, `product_variants`, `product_reviews`: public `select` only for active rows; no client write access.
+- `profiles`: a user can `select` and `update` only the row where `id = auth.uid()`; no delete.
+- `carts`, `cart_items`: full CRUD only where the cart belongs to `auth.uid()`.
+- `wishlist_items`: CRUD only where `user_id = auth.uid()`.
+- `orders`, `order_items`: `select` only own rows; **no direct insert/update/delete from clients** (orders are created only through `place_order`).
+- `coupons`: no direct client access (validated server-side / via function).
+- `inquiries`: insert allowed for everyone (rate-limit in the API), no select for clients.
+- Include `grant`/`revoke` statements so `anon` and `authenticated` roles have only what they need. Add the indexes needed for foreign keys, slug lookups, search (`pg_trgm` or `tsvector` on names) and order history.
+- Add a short SQL comment block after each policy explaining it in plain language.
+
+### 5.4 Seed data (`03_seed.sql`)
+Realistic, with **BDT integer prices**. Minimum **40 products** across all 10 categories, each with 1–3 variants, 1–6 farmers, stock quantities, badges, harvest labels, traceability logs and 3–6 reviews for the featured items (use Bangla and English reviews like those in the design).
+
+Anchor items **from the designs** (use these names and approximate prices):
+- Red Spinach / লাল শাক: 500g bundle ৳35 (was ৳45), Karim Mia, Bogura
+- Deshi Tomato / দেশি টমেটো: 500g ৳65, 1 kg ৳120 (compare-at ৳130/kg), Rahim Uddin, Charghat, Rajshahi. The featured product is "Organic Deshi Tomato", Trace ID #BD-BG-402-TM, grower Karim Mia, Shibganj Bogura, 5.2 acres organic; harvest log 05:30 hand-picked, 06:45 graded & packed, 08:15 dispatched to Tejgaon Hub; rating 4.9 (128 reviews)
+- Pointed Gourd (Potol) / পটল: 500g ৳35–৳50, Selina Begum, Mithapukur, Rangpur
+- Himsagar Mango / হিমসাগর আম: 1 kg ৳120–৳140, Rafiqul Islam, Bagha, Rajshahi
+- Tender Bottle Gourd (Lau) / লাউ: per piece ৳55 (was ৳70)
+- Kalo Jeera Aromatic Rice / কালোজিরা চাল: 1 kg ৳145, Mizanur Rahman, Dinajpur/Sreemangal
+- Cold-Pressed Mustard Oil / কাঠের ঘানি সরিষার তেল: 500ml ৳170 (was ৳190), Pabna Cooperative
+- Bogura Red Potatoes ৳80/2 kg, Pabna Country Onions ৳110/1.5 kg, Green Chili + Cilantro ৳45
+- Weekly Basket: "Standard 4-Person Weekly Basket", ৳340 listed, ৳290 after 15% saving, about 5.4 kg
+Fill the rest with plausible Bangladeshi staples (brinjal/begun, okra/dherosh, cauliflower, cucumber, water spinach/kolmi shak, amrapali mango, guava, banana, litchi, chinigura rice, miniket rice, masoor dal, moong dal, chickpeas, turmeric, chili powder, cumin, honey, ghee, etc.) with realistic Dhaka-market prices.
+
+---
+
+## 6. AUTHENTICATION AND ACCOUNTS (Supabase Auth, JWT)
+
+### 6.1 Sign-in options (all visible on a clean `/login` page and in a modal where relevant)
+1. **Continue with Google** (Supabase OAuth).
+2. **Email registration and login** (email + password; include "Forgot password" using Supabase reset flow and a `/reset-password` page).
+3. **Continue as Guest**: a clearly visible, equally prominent secondary button using **`supabase.auth.signInAnonymously()`**. Do not hide it in small print.
+4. **Browse without signing in:** every browsing page (home, shop, product, farmers, about, contact, search) works with no session at all. Authentication is requested only when the visitor tries to use the cart, wishlist, checkout, profile or orders. At that moment show a friendly prompt with the same three options.
+
+### 6.2 Rules
+- The frontend uses **only** the public Supabase URL and anon key (safe by design, protected by RLS). The **service-role key must never appear in frontend code, `VITE_` variables, the repo or the README examples with real values.** Prefer designing the backend so the service-role key is **not needed at all** (use the user's JWT to create a per-request Supabase client so RLS applies, and use `place_order` for privileged work). If you do use it anywhere, it must be server-only, in a non-`VITE_` variable, and you must justify it in a comment.
+- The frontend sends `Authorization: Bearer <access_token>` on every API call. **The backend validates the token on every protected route** (call `supabase.auth.getUser(token)` or verify the JWT signature with the project's JWT secret), rejects missing, expired or invalid tokens with `401`, and never trusts a `user_id` sent by the client. User identity always comes from the validated token.
+- Session persistence: `persistSession: true`, `autoRefreshToken: true`, `detectSessionInUrl: true` for the OAuth redirect. The user stays signed in after refresh or reopening the browser.
+- Secure **Sign out** in the header/account menu: calls `supabase.auth.signOut()`, clears TanStack Query cache, and redirects to home. Signing out a guest warns that the guest cart will be lost unless they create an account.
+- Guests get the same cart, wishlist and demo-checkout features as registered users, scoped to their anonymous `auth.uid()` under the same RLS rules.
+- Display a small "Guest" label in the account menu and a gentle "Create an account to keep your orders" prompt.
+
+### 6.3 Per-user isolation
+Each user can read and write only their own cart, wishlist, profile and orders: enforced in **both** the API (always filter by the validated user id) **and** RLS. Add tests or smoke checks that user B cannot read user A's data.
+
+### 6.4 Profile page (`/account`)
+Edit name, phone, delivery address and area, preferred language; view order history with status chips; open an order detail page with line items and totals; sign out.
+
+### 6.5 Upgrading a guest to a real account
+When a guest chooses "Create account" or "Continue with Google", **link the identity to the existing anonymous user** (`updateUser({ email, password })` for email, `linkIdentity({ provider: 'google' })` for Google) so the cart, wishlist and orders are kept. If linking is not possible (e.g. the Google account already exists), fall back to a normal sign-in and explain clearly what happened. Document this behaviour in the README.
+
+---
+
+## 7. BACKEND API (Vercel Serverless, TypeScript)
+
+All routes are under `/api` and handled by `api/[...path].ts` using the router in `server/`. Responses use one consistent envelope:
+
+```json
+{ "ok": true, "data": { ... } }
+{ "ok": false, "error": { "code": "VALIDATION_ERROR", "message": "Human-readable message", "details": [ ... ] } }
+```
+Use correct HTTP status codes (400, 401, 403, 404, 409, 422, 429, 500). Never leak stack traces or secrets. Log server errors with `console.error` and a request id. Validate every body, query and path param with Zod. Share DTO types from `/shared`.
+
+| Method & path | Auth | Purpose |
+|---|---|---|
+| `GET /api/health` | public | Reports whether env vars and DB connection are OK (no secrets) |
+| `GET /api/categories` | public | List categories with product counts |
+| `GET /api/products` | public | Query: `q`, `category`, `district`, `practice`, `harvest` (today/12h/preorder), `minPrice`, `maxPrice`, `sort` (freshest, price_asc, price_desc, rating, popular), `featured`, `page`, `pageSize` → paginated, with total count |
+| `GET /api/products/:slug` | public | Product with variants, farmer, trace log, reviews, related items |
+| `GET /api/farmers`, `GET /api/farmers/:slug` | public | Farmer list/detail with their products |
+| `GET /api/baskets/standard` | public | Standard weekly basket composition with server-computed prices and 15% saving |
+| `GET /api/me` / `PATCH /api/me` | user | Read/update own profile |
+| `GET /api/cart` | user | Cart with **server-computed** line prices, subtotal, discounts, delivery fee, total |
+| `POST /api/cart/items` | user | Add `{variantId, quantity}` (merge if exists) |
+| `PATCH /api/cart/items/:id` | user | Set quantity (0 removes) |
+| `DELETE /api/cart/items/:id` / `DELETE /api/cart` | user | Remove one item / clear cart |
+| `POST /api/cart/coupon` / `DELETE /api/cart/coupon` | user | Apply/remove coupon (validated on server) |
+| `GET /api/wishlist` | user | Wishlist products |
+| `POST /api/wishlist` / `DELETE /api/wishlist/:productId` | user | Add/remove (idempotent) |
+| `POST /api/orders` | user | Demonstration checkout: body has only delivery details, payment method (demo), slot, notes. Calls `place_order`, returns the order |
+| `GET /api/orders` / `GET /api/orders/:id` | user | Own order history/detail only |
+| `POST /api/inquiries` | public (rate-limited) | Contact, Become a Seller, Community Buying forms |
+
+### 7.1 Pricing rules (all in `server/pricing.ts`, unit-tested; mirrored by the SQL `place_order`)
+- Line total = variant `price_bdt` × quantity, with prices always read from the database.
+- **Weekly basket saving:** if the cart has ≥ 4 distinct `basket_eligible` products, 15% off the sum of those lines. Label it "Weekly Basket Saving".
+- **Coupon:** validated against `coupons` (active, not expired, minimum subtotal). `KRISHI100` → ৳100 off when subtotal ≥ ৳799.
+- **Delivery fee:** ৳60 if subtotal after discounts is under ৳799; free at or above ৳799.
+- Round to whole taka consistently. Total = subtotal − basket saving − coupon + delivery fee. Never below zero.
+- The price shown in the frontend cart, the checkout page, and the order record must all match because they all come from this one backend calculation. Frontend must **display** server numbers, never compute authoritative totals.
+- Validate quantity limits (1–50) and stock; return clear errors ("Only 3 left of Deshi Tomato 1 kg").
+
+### 7.2 Security and robustness
+- Strict CORS (same-origin in production), JSON body size limit, basic rate limiting on `/api/inquiries` and auth-sensitive routes (use a simple per-IP in-memory limiter only as best-effort protection and note its limits in a code comment; **never** use in-memory storage for business data).
+- Sanitize text inputs, trim and length-limit strings, reject unknown fields.
+- Idempotent wishlist/cart operations; order creation protected against double-submit (client disables button and server uses an idempotency key or cart lock).
+- Environment variables validated at start with a clear error message.
+
+---
+
+## 8. FRONTEND FEATURES AND ROUTES
+
+| Route | Page |
+|---|---|
+| `/` | Homepage: hero, trust strip, Today's Fresh Harvest, categories, Weekly Basket builder, farmers, seasonal calendar, community buying, featured collections |
+| `/shop` | Product browsing with search, filters, sort, grid/list, pagination; URL query params reflect filters (shareable, survives refresh) |
+| `/category/:slug` | Same as shop, pre-filtered |
+| `/product/:slug` | Product detail (variants/pack size, quantity, add to cart, wishlist heart, traceability log, reviews, related) |
+| `/farmers`, `/farmers/:slug` | Farmer list and story pages |
+| `/traceability` | "Our Traceability" explainer (QR protocol, fair price promise) |
+| `/basket-builder` | Customise the weekly basket (toggle items, change quantities, live server-computed price, add all to cart) |
+| `/community-buying` | Information plus a registration form (saved to `inquiries`) |
+| `/sell` | Become a Seller form (saved to `inquiries`) |
+| `/cart` | Cart page (mobile bottom-bar target; desktop also has a mini-cart drawer from the header) |
+| `/wishlist` | Saved products |
+| `/checkout` | Demonstration checkout: delivery details, delivery slot, payment-method selection (bKash, Nagad, Card, Cash on Delivery) with a **prominent "Demonstration checkout: no payment will be taken" notice**, order summary using server totals |
+| `/order-confirmation/:id` | Order confirmation with order number, items, totals, delivery info |
+| `/account`, `/account/orders`, `/account/orders/:id` | Profile and order history |
+| `/login`, `/reset-password`, `/auth/callback` | Authentication |
+| `/about`, `/contact` | About Us (story, mission, fair-share promise) and Contact (form → `inquiries`, hotline, hubs) |
+| `*` | Friendly 404 page |
+| Footer pages | Delivery Schedule, Freshness Guarantee, Refund & Return, FAQ: simple static content pages |
+
+Protected routes (`/checkout`, `/account*`) trigger the sign-in prompt if there is no session; `/cart` and `/wishlist` are reachable by everyone but need a session (including guest) to save items, so offer "Continue as Guest" inline.
+
+### 8.1 UX requirements
+- Every list/page has **skeleton loaders**; every action has a visible pending state (spinner on the button, disabled while submitting).
+- **Success toasts** ("Added to basket", "Saved to wishlist", "Order placed") and **meaningful error messages** in plain language, in the active language, with retry where useful. Network errors, 401 (offer to sign in again), validation errors (shown beside the field) and 500s are all handled.
+- Optimistic updates for cart quantity and wishlist toggle with rollback on failure.
+- Cart count and total in the header update live.
+- Empty states for empty cart, empty wishlist, no search results, no orders.
+- Accessible: semantic HTML, labels, focus states, keyboard navigation, `alt` text, `aria-live` for toasts, sufficient contrast.
+- SEO basics: `<title>` and meta description per page, Open Graph tags, favicon.
+- The EN/বাংলা toggle switches all interface text (simple typed dictionary in `src/lib/i18n`), product names (`name_en`/`name_bn`), digits, and persists the choice (saved in profile when signed in, else in localStorage).
+- Delivery-area selector in the header (Gulshan, Dhanmondi, Uttara, Banani, Mirpur, etc.) saved locally and prefilled at checkout.
+
+### 8.2 Responsiveness
+Test and fix layouts at 360, 390, 768, 1024, 1280 and 1536 px. No horizontal scrolling. Mobile uses the bottom tab bar and bottom sheets; tablet uses 3-column grids; desktop uses the sidebar filters and full header. Images are responsive with `loading="lazy"`, fixed aspect ratios (1:1 or 4:3) so layout does not jump.
+
+---
+
+## 9. INTEGRATION, ENVIRONMENT AND DEMO MODE
+
+### 9.1 Environment variables (`.env.example`, **no real values**)
+```
+# Public (safe for the browser; protected by Row Level Security)
+VITE_SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
+VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_PUBLIC_KEY
+
+# Server-only (used by Vercel Functions; never prefix with VITE_)
+SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
+SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_PUBLIC_KEY
+# SUPABASE_SERVICE_ROLE_KEY=  (OPTIONAL. Leave unset unless the code explicitly requires it. Never expose.)
+```
+Explain in comments which variables are public and which are secret.
+
+### 9.2 One consistent data contract
+All frontend ↔ backend data uses the DTO types in `/shared`. The frontend API client (`src/lib/apiClient.ts`) is the only place that calls `/api`, attaches the token, unwraps the response envelope and throws typed errors. **Every button must call the correct endpoint.** Provide a short "button → endpoint" table in the README or docs as proof of wiring.
+
+### 9.3 Demo Preview mode (when Supabase is not configured yet)
+If the Supabase environment variables are missing, the app must still run and show **sample data**, with:
+- A persistent, clearly labelled banner: **"DEMO PREVIEW: sample data, not connected to a database. Sign-in, saved carts and orders are disabled until Supabase is set up."**
+- Product browsing, search, filters, product pages work from a bundled sample dataset (`src/demo/sampleData.ts`).
+- Cart/wishlist may work locally in the browser for illustration, but the banner must say they are temporary and not saved to an account. Checkout in demo mode must say "Preview only: no order was saved."
+- **Never present demo data as a connected database.** The `/api/health` route and an in-app status indicator (small, in the footer or settings) must truthfully report "Connected to Supabase" or "Demo preview".
+- Once the Supabase variables are set, demo mode switches off automatically with no code changes. Guest access must then work immediately even if Google has not been configured.
+
+### 9.4 Images
+Do not depend on the expiring Google-hosted image URLs in the Stitch HTML. Use reliable, free-to-use stock image URLs (e.g. Unsplash/Pexels) stored in the `image_url` columns, with `onError` fallback to a local branded SVG placeholder (cream background, leaf icon, product initial) so no broken-image icons ever appear. Add a README note on how to replace images later (change the URL in Supabase **Table Editor**).
+
+---
+
+## 10. DEPLOYMENT AND README (click-by-click, beginner level)
+
+Write `README.md` in plain, friendly English with numbered steps, "click X → choose Y → copy Z" wording, and a "What you should see" line after each step. Cover:
+
+1. **What this project is** (3 sentences) and a diagram of how the parts connect (browser → Vercel → Supabase).
+2. **Create a GitHub account and repository; upload the project** (via the GitHub website "Add file → Upload files" for beginners; also show the Git commands as an optional alternative).
+3. **Create a Supabase project:** supabase.com → New project → name, database password (save it), region closest to Bangladesh (e.g. Singapore) → wait for provisioning.
+4. **Run the database scripts:** SQL Editor → New query → paste `01_schema.sql` → Run; then `02_rls_policies.sql`; then `03_seed.sql`. What success looks like; how to check **Table Editor** shows products.
+5. **Turn on guest access:** Authentication → Sign In / Providers → enable **Anonymous Sign-Ins**. Mention the option to add CAPTCHA later to limit abuse.
+6. **Email sign-in settings:** explain email confirmation (on by default), how to turn it off for testing, and Supabase's free-tier email limits.
+7. **Copy the keys:** Project Settings → API (or "Data API/API Keys") → copy **Project URL** and the **anon/public** key. Explain which one is safe and warn never to share the `service_role` key.
+8. **Deploy to Vercel:** vercel.com → Add New → Project → import the GitHub repo → Framework preset **Vite** → Environment Variables (add each name/value from `.env.example`) → Deploy. Then copy the live URL.
+9. **Tell Supabase the live URL:** Authentication → URL Configuration → set **Site URL** to the Vercel URL and add `https://YOUR-SITE.vercel.app/**` and `http://localhost:5173/**` to **Redirect URLs**.
+10. **Set up Continue with Google (optional but explained fully):** Google Cloud Console → create project → OAuth consent screen → Credentials → Create OAuth client ID (Web application) → add the Supabase callback URL (shown in Supabase → Authentication → Providers → Google) as an authorised redirect URI → copy Client ID and Client Secret into Supabase → Save. State that guest and email sign-in work without this step.
+11. **Test your live site:** a checklist the user can follow (browse, search, continue as guest, add to cart, refresh, wishlist, checkout, see order in profile, sign out, sign in again).
+12. **Optional: run locally** (`npm install`, copy `.env.example` to `.env.local`, `npm run dev`).
+13. **Troubleshooting** table: blank page, "Demo Preview" banner still showing, 401 errors, Google redirect mismatch, guest sign-in disabled, SQL errors, images missing, 404 on refresh.
+14. **Security reminders** and how to update products by editing Supabase Table Editor.
+15. A **"Test status"** section copied from the final report (Section 13).
+
+---
+
+## 11. QUALITY RULES FOR THE CODE
+- Strict TypeScript (`"strict": true`), no `any` unless justified, no unused code, ESLint clean.
+- Small, reusable components; no duplicated logic; consistent naming; short comments only where they help.
+- No secrets in the repo. `.gitignore` is correct.
+- Production build (`npm run build`) must succeed with zero TypeScript errors, and `npm run typecheck` must pass for both `src` and `api`/`server`.
+- Paths, imports and file extensions must work on Vercel's Node 20 runtime (ESM/CJS settings consistent; correct `tsconfig` for the `api` folder).
+- Deep links (e.g. `/product/deshi-tomato`) must work after deployment and after refresh.
+
+---
+
+## 12. TESTING AND QUALITY ASSURANCE (do these, don't just describe them)
+
+Run what your environment allows, fix every failure, then record honest results.
+
+**A. Automated / local checks**
+1. `npm install` succeeds; no peer-dependency conflicts.
+2. `npm run typecheck`, `npm run lint`, `npm run build` all pass.
+3. `npm run test`: unit tests for pricing (line totals, basket saving, coupon thresholds, delivery fee boundary at ৳798/৳799, rounding, empty cart), Zod schemas, and currency/digit formatting (EN/BN).
+4. SQL review: scripts run cleanly top to bottom on an empty Supabase project; re-running does not error; RLS enabled on **every** table (include a verification query listing `relrowsecurity`).
+5. Route check: every link and button target in the UI resolves to an existing page or API; no dead links.
+
+**B. API smoke test (`npm run smoke`, needs the user's Supabase env)**
+Health → list products → product detail → anonymous sign-in → add to cart → update quantity → wishlist add/remove → apply coupon → place demo order → confirm order total equals server-calculated total → fetch order history → verify a second user cannot read the first user's cart/orders → verify requests without a token get 401 → verify a tampered price/total in the request body is ignored.
+
+**C. UI / responsive checks**
+Review at 360, 768, 1024, 1280 px: no overflow, bottom tab bar on mobile only, filters become a bottom sheet on mobile, forms usable on touch, Bangla text renders without clipping.
+
+**D. Items that need the user's external accounts** (mark clearly): live Supabase connection, anonymous sign-in toggle, email delivery, Google OAuth, Vercel production deployment, live URL redirect settings.
+
+---
+
+## 13. FINAL REPORT (required at the end of your work)
+
+End with a table of three columns: **Check | Status (✅ Verified by running / ⚠️ Not run: needs your accounts / ❌ Failed and fixed) | Notes**, covering: install, typecheck, lint, build, unit tests, SQL scripts, RLS, product browsing, search/filter/sort, cart operations, wishlist, guest sign-in, email sign-up/login, Google sign-in, order creation, order history, per-user isolation, token validation, mobile responsiveness, broken links, Vercel deep-link refresh, Demo mode.
+
+Then give a short **"What YOU need to do next"** list (maximum 10 steps, each pointing to the README section number), and a **"Known limitations"** list (e.g. no real payments; reviews are read-only; Community Buying and Become a Seller store requests but do not run a real group-order engine; guest accounts are anonymous and may be removed after inactivity if the project owner cleans them up).
+
+---
+
+## 14. BUILD ORDER (work through these phases; state which phase you are in)
+
+1. **Plan:** confirm assumptions (Section 1.1), list the final file tree and the endpoints. Keep it short.
+2. **Database:** `01_schema.sql`, `02_rls_policies.sql`, `03_seed.sql` (+ optional reset).
+3. **Shared types and backend:** `shared/`, `server/`, `api/[...path].ts`, unit tests for pricing.
+4. **Frontend foundation:** Vite/Tailwind config with tokens, fonts, i18n, layout (header, footer, bottom tab bar), auth context, API client, demo mode.
+5. **Pages and components:** homepage → shop → product detail → cart → wishlist → checkout → confirmation → account/orders → login → about/contact/farmers/other pages.
+6. **Config and docs:** `package.json`, `vercel.json`, `.env.example`, `.gitignore`, `README.md`, `scripts/smoke-test.ts`.
+7. **QA:** run Section 12, fix problems, produce the Section 13 report.
+
+**Start now with Phase 1.** Do not ask the user questions unless something is truly impossible to decide yourself; instead state your assumption and proceed.

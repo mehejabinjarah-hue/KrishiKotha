@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" fill="none">
+  <rect width="1200" height="630" fill="#F5F2E8"/>
+  <rect x="64" y="64" width="1072" height="502" rx="32" fill="#245C3A"/>
+  <circle cx="960" cy="240" r="140" fill="#8BBF67" fill-opacity="0.22"/>
+  <circle cx="1010" cy="390" r="90" fill="#E7A94B" fill-opacity="0.28"/>
+  <text x="120" y="235" fill="#8BBF67" font-family="sans-serif" font-size="28" font-weight="700">100% TRACEABLE · সরাসরি কৃষকের ক্ষেত থেকে</text>
+  <text x="120" y="325" fill="#FFFFFF" font-family="sans-serif" font-size="68" font-weight="800">KrishiKotha | কৃষিকথা</text>
+  <text x="120" y="395" fill="#F5F2E8" font-family="sans-serif" font-size="34" font-weight="500">From Farmers' Hands to Your Home.</text>
+  <text x="120" y="475" fill="#E7A94B" font-family="sans-serif" font-size="24" font-weight="600">Same-Day Morning Harvest Across Dhaka · Zero Middlemen</text>
+</svg>

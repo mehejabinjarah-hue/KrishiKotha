@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#F5F2E8"/>
+  <circle cx="200" cy="135" r="56" fill="#245C3A" fill-opacity="0.08"/>
+  <path d="M236 96C204 96 176 116 170 152C170 157 174 162 180 162C216 156 236 128 236 96Z" fill="#8BBF67"/>
+  <path d="M170 164C186 146 204 128 226 110" stroke="#245C3A" stroke-width="4" stroke-linecap="round"/>
+  <text x="200" y="228" text-anchor="middle" fill="#245C3A" font-family="sans-serif" font-size="16" font-weight="600">KrishiKotha Fresh Harvest</text>
+</svg>
